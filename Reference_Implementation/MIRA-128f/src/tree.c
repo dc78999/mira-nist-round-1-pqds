@@ -33,28 +33,16 @@ void sign_mira_128_tree_expand(sign_mira_128_seed_tree_t tree, const uint8_t *sa
     hash_sha3_finalize(tree[to], &ctx);
   }
 
-  const uint8_t *salt_x4[] = {salt, salt, salt, salt};
-  const uint8_t *domain_separator_x4[] = {&domain_separator, &domain_separator, &domain_separator, &domain_separator};
-  hash_sha3_x4_ctx ctx_x4;
-
-  for(size_t i = 3; i < (SIGN_MIRA_128_PARAM_N_MPC - 1); i+=4) {
+  for(size_t i = 3; i < (SIGN_MIRA_128_PARAM_N_MPC - 1); i+=1) {
     size_t from = i;
     size_t to = i * 2 + 1;
 
-    uint8_t from1 = (uint8_t) (i);
-    uint8_t from2 = (uint8_t) (i+1);
-    uint8_t from3 = (uint8_t) (i+2);
-    uint8_t from4 = (uint8_t) (i+3);
-    const uint8_t *from_x4[] = {&from1, &from2, &from3, &from4};
-    const uint8_t *tree_from_x4[] = {tree[from + 0], tree[from + 1], tree[from + 2], tree[from + 3]};
-    uint8_t *tree_to_times4[] = {tree[to + 0], tree[to + 2], tree[to + 4], tree[to + 6]};
-
-    hash_sha3_x4_init(&ctx_x4);
-    hash_sha3_x4_absorb(&ctx_x4, salt_x4, 2 * SIGN_MIRA_128_SECURITY_BYTES);
-    hash_sha3_x4_absorb(&ctx_x4, from_x4, sizeof(uint8_t));
-    hash_sha3_x4_absorb(&ctx_x4, tree_from_x4, SIGN_MIRA_128_SECURITY_BYTES);
-    hash_sha3_x4_absorb(&ctx_x4, domain_separator_x4, sizeof(uint8_t));
-    hash_sha3_x4_finalize(tree_to_times4, &ctx_x4);
+    hash_sha3_init(&ctx);
+    hash_sha3_absorb(&ctx, salt, 2 * SIGN_MIRA_128_SECURITY_BYTES);
+    hash_sha3_absorb(&ctx, from, sizeof(uint8_t));
+    hash_sha3_absorb(&ctx, tree[from], SIGN_MIRA_128_SECURITY_BYTES);
+    hash_sha3_absorb(&ctx, &domain_separator, sizeof(uint8_t));
+    hash_sha3_finalize(tree[to], &ctx);
   }
 }
 
@@ -99,13 +87,6 @@ void sign_mira_128_tree_expand_partial(sign_mira_128_seed_tree_t partial_tree, c
     }
   }
 
-  hash_sha3_x4_ctx ctx_x4;
-  const uint8_t *salt_x4[] = {salt, salt, salt, salt};
-  const uint8_t *domain_separator_x4[] = {&domain_separator, &domain_separator, &domain_separator, &domain_separator};
-  const uint8_t *tree_from_x4[4];
-  uint8_t *tree_to_times4[4];
-  uint8_t discard_buffer[2 * SIGN_MIRA_128_SECURITY_BYTES];
-
   for(size_t i = 3, l = 1, j = 2; i < (SIGN_MIRA_128_PARAM_N_MPC - 1); i++, j++) {
     size_t N = (1U << l);
     if (j >= N) {  // increment depth
@@ -116,30 +97,20 @@ void sign_mira_128_tree_expand_partial(sign_mira_128_seed_tree_t partial_tree, c
     size_t to = i * 2 + 1;
 
     size_t missing = (alpha >> (SIGN_MIRA_128_PARAM_N_MPC_LOG2 - l));            // missing node for the depth l
-    size_t is_right = (~alpha >> (SIGN_MIRA_128_PARAM_N_MPC_LOG2 - 1 - l)) & 1;  // position in the depth l + 1
-    size_t times4i = (i - 3) & 0x3;
-    tree_from_x4[times4i] = partial_tree[from];
+    size_t is_right = (~alpha >> (SIGN_MIRA_128_PARAM_N_MPC_LOG2 - 1 - l)) & 1;  // position in the depth l + 1   
 
     if (j == missing) {
         memcpy(partial_tree[to + is_right], partial_tree_seeds[l], SIGN_MIRA_128_SECURITY_BYTES);
-        tree_to_times4[times4i] = discard_buffer;
+        // tree_to_times4[times4i] = discard_buffer;
     } else {
-        tree_to_times4[times4i] = partial_tree[to];
-    }
-
-    if (times4i == 3) {
-      uint8_t from1 = (uint8_t)(i-3);
-      uint8_t from2 = (uint8_t)(i-2);
-      uint8_t from3 = (uint8_t)(i-1);
-      uint8_t from4 = (uint8_t)(i);
-      const uint8_t *from_x4[] = {&from1, &from2, &from3, &from4};
-      hash_sha3_x4_init(&ctx_x4);
-      hash_sha3_x4_absorb(&ctx_x4, salt_x4, 2 * SIGN_MIRA_128_SECURITY_BYTES);
-      hash_sha3_x4_absorb(&ctx_x4, from_x4, sizeof(uint8_t));
-      hash_sha3_x4_absorb(&ctx_x4, tree_from_x4, SIGN_MIRA_128_SECURITY_BYTES);
-      hash_sha3_x4_absorb(&ctx_x4, domain_separator_x4, sizeof(uint8_t));
-      hash_sha3_x4_finalize(tree_to_times4, &ctx_x4);
-    }
+        // tree_to_times4[times4i] = partial_tree[to];
+      hash_sha3_init(&ctx);
+      hash_sha3_absorb(&ctx, salt, 2 * SIGN_MIRA_128_SECURITY_BYTES);
+      hash_sha3_absorb(&ctx, (const uint8_t *)&from, sizeof(uint8_t));
+      hash_sha3_absorb(&ctx, partial_tree[from], SIGN_MIRA_128_SECURITY_BYTES);
+      hash_sha3_absorb(&ctx, &domain_separator, sizeof(uint8_t));
+      hash_sha3_finalize(partial_tree[to], &ctx);
+    }    
   }
 }
 
