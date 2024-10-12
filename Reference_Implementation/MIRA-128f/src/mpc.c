@@ -261,9 +261,7 @@ void sign_mira_128_commit_to_shares(uint8_t *commits, uint8_t e, const uint8_t *
   uint8_t state[SIGN_MIRA_128_PARAM_STATE_BYTES] = {0};
 
   // Compute the first N-1 commitments (last commitment is a dummy computation that is rewritten after the loop)
-  for(size_t i = 0; i < SIGN_MIRA_128_PARAM_N_MPC; i+=1) {
-    
-
+  for(size_t i = 0; i < SIGN_MIRA_128_PARAM_N_MPC; i+=1) {  
     hash_sha3_ctx ctx;
     hash_sha3_init(&ctx);
     uint8_t index = (uint8_t)i;
@@ -281,7 +279,7 @@ void sign_mira_128_commit_to_shares(uint8_t *commits, uint8_t e, const uint8_t *
     hash_sha3_absorb(&ctx, &index, sizeof(uint8_t));
 
     // absorb the seed corresponding to the current index
-    hash_sha3_absorb(&ctx, &theta_i[SIGN_MIRA_128_SECURITY_BYTES], SIGN_MIRA_128_SECURITY_BYTES);
+    hash_sha3_absorb(&ctx, &theta_i[SIGN_MIRA_128_SECURITY_BYTES * i], SIGN_MIRA_128_SECURITY_BYTES);
 
     // finalize the hash and store the result in the commitment array
     hash_sha3_finalize(&commits[2 * SIGN_MIRA_128_SECURITY_BYTES * i], &ctx);    
