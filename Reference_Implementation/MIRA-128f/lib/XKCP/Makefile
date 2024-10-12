@@ -1,6 +1,6 @@
 CC=aarch64-linux-gnu-gcc
 WARNING_FLAGS=-Wall -Wextra -Wpedantic -Wno-unused-function
-CFLAGS= -O3 -march=native $(WARNING_FLAGS) -std=gnu99 -I/${PAPI_DIR}/include
+CFLAGS= -O3 -march=armv8-a $(WARNING_FLAGS) -std=gnu99 -I/${PAPI_DIR}/include
 ASMFLAGS := -x assembler-with-cpp -Wa,-defsym,old_gas_syntax=1 -Wa,-defsym,no_plt=1
 
 PLATFORM=armv8
