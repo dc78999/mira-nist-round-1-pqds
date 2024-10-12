@@ -260,29 +260,23 @@ void sign_mira_128_commit_to_shares(uint8_t *commits, uint8_t e, const uint8_t *
   uint8_t domain_separator = DOMAIN_SEPARATOR_COMMITMENT;
   uint8_t state[SIGN_MIRA_128_PARAM_STATE_BYTES] = {0};
 
-  // Compute the first N-1 commitments (last commitment is a dummy computation that is rewritten after the loop)
-  for(size_t i = 0; i < SIGN_MIRA_128_PARAM_N_MPC; i+=1) {  
+    // Compute the first N-1 commitments (last commitment is a dummy computation that is rewritten after the loop)
+  for(size_t i = 0; i < SIGN_MIRA_128_PARAM_N_MPC; i+=1) {
     hash_sha3_ctx ctx;
     hash_sha3_init(&ctx);
     uint8_t index = (uint8_t)i;
-    
-    // absorb domain separator
-    hash_sha3_absorb(&ctx, &domain_separator, sizeof(uint8_t));
-
-    // absorb the salt
-    hash_sha3_absorb(&ctx, salt, 2 * SIGN_MIRA_128_SECURITY_BYTES);
-
-    // absorb the 'e' value
-    hash_sha3_absorb(&ctx, &e, sizeof(uint8_t));
-
-    // absorb the index 'i'
-    hash_sha3_absorb(&ctx, &index, sizeof(uint8_t));
-
-    // absorb the seed corresponding to the current index
-    hash_sha3_absorb(&ctx, &theta_i[SIGN_MIRA_128_SECURITY_BYTES * i], SIGN_MIRA_128_SECURITY_BYTES);
-
-    // finalize the hash and store the result in the commitment array
-    hash_sha3_finalize(&commits[2 * SIGN_MIRA_128_SECURITY_BYTES * i], &ctx);    
+    // Absorb the domain separator
+    hash_sha3_absorb(&ctx, &domain_separator, sizeof(uint8_t));    
+    // Absorb the salt
+    hash_sha3_absorb(&ctx, salt, 2 * SIGN_MIRA_128_SECURITY_BYTES);    
+    // Absorb the 'e' value
+    hash_sha3_absorb(&ctx, &e, sizeof(uint8_t));    
+    // Absorb the index (i)
+    hash_sha3_absorb(&ctx, &index, sizeof(uint8_t));    
+    // Absorb the seed corresponding to the current index
+    hash_sha3_absorb(&ctx, &theta_i[SIGN_MIRA_128_SECURITY_BYTES * i], SIGN_MIRA_128_SECURITY_BYTES);    
+    // Finalize the hash and store the result in the commitment array
+    hash_sha3_finalize(&commits[2 * SIGN_MIRA_128_SECURITY_BYTES * i], &ctx);
   }
 
   // Compute commitment N
@@ -583,20 +577,19 @@ void sign_mira_128_recompute_commitments(uint8_t *commits, uint8_t *theta_i, uin
 
   // Recompute the first N-1 commitments (last commitment and index hidden are overwrited after)
   for(size_t i = 0; i < SIGN_MIRA_128_PARAM_N_MPC; i+=1) {
-
     const uint8_t *seed = &theta_i[SIGN_MIRA_128_SECURITY_BYTES * i];
     uint8_t *commit = &commits[2 * SIGN_MIRA_128_SECURITY_BYTES * i];
-    uint8_t index = (uint8_t)i;
 
     hash_sha3_ctx ctx;
     hash_sha3_init(&ctx);
     hash_sha3_absorb(&ctx, &domain_separator, sizeof(uint8_t));
     hash_sha3_absorb(&ctx, salt, 2 * SIGN_MIRA_128_SECURITY_BYTES);
     hash_sha3_absorb(&ctx, &e, sizeof(uint8_t));
+    uint8_t index = (uint8_t)i;
     hash_sha3_absorb(&ctx, &index, sizeof(uint8_t));
     hash_sha3_absorb(&ctx, seed, SIGN_MIRA_128_SECURITY_BYTES);
 
-    // finalize and store the commit
+    // Finalize and store the commitment
     hash_sha3_finalize(commit, &ctx);
   }
 

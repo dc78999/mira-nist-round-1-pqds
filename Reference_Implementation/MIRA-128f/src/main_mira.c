@@ -32,7 +32,7 @@ inline static uint64_t cpucyclesStop(void) {
 }
 
 int main(void) {
-    unsigned long long mira128f_mlen = 7;
+    unsigned long long mira128f_mlen = 21;
     unsigned long long mira128f_smlen;
 
     unsigned char mira128f_m[] = {0x4d, 0x49, 0x6e, 0x52, 0x41, 0x6e, 0x6b, 

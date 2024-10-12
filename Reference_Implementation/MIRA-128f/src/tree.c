@@ -39,7 +39,7 @@ void sign_mira_128_tree_expand(sign_mira_128_seed_tree_t tree, const uint8_t *sa
 
     hash_sha3_init(&ctx);
     hash_sha3_absorb(&ctx, salt, 2 * SIGN_MIRA_128_SECURITY_BYTES);
-    hash_sha3_absorb(&ctx, from, sizeof(uint8_t));
+    hash_sha3_absorb(&ctx, (const uint8_t *)&from, sizeof(uint8_t));
     hash_sha3_absorb(&ctx, tree[from], SIGN_MIRA_128_SECURITY_BYTES);
     hash_sha3_absorb(&ctx, &domain_separator, sizeof(uint8_t));
     hash_sha3_finalize(tree[to], &ctx);
@@ -97,8 +97,8 @@ void sign_mira_128_tree_expand_partial(sign_mira_128_seed_tree_t partial_tree, c
     size_t to = i * 2 + 1;
 
     size_t missing = (alpha >> (SIGN_MIRA_128_PARAM_N_MPC_LOG2 - l));            // missing node for the depth l
-    size_t is_right = (~alpha >> (SIGN_MIRA_128_PARAM_N_MPC_LOG2 - 1 - l)) & 1;  // position in the depth l + 1   
-
+    size_t is_right = (~alpha >> (SIGN_MIRA_128_PARAM_N_MPC_LOG2 - 1 - l)) & 1;  // position in the depth l + 1
+    
     if (j == missing) {
         memcpy(partial_tree[to + is_right], partial_tree_seeds[l], SIGN_MIRA_128_SECURITY_BYTES);
         // tree_to_times4[times4i] = discard_buffer;
@@ -110,7 +110,7 @@ void sign_mira_128_tree_expand_partial(sign_mira_128_seed_tree_t partial_tree, c
       hash_sha3_absorb(&ctx, partial_tree[from], SIGN_MIRA_128_SECURITY_BYTES);
       hash_sha3_absorb(&ctx, &domain_separator, sizeof(uint8_t));
       hash_sha3_finalize(partial_tree[to], &ctx);
-    }    
+    }
   }
 }
 
