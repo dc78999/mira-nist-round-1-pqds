@@ -33,10 +33,6 @@ void sign_mira_128_tree_expand(sign_mira_128_seed_tree_t tree, const uint8_t *sa
     hash_sha3_finalize(tree[to], &ctx);
   }
 
-  const uint8_t *salt_x4[] = {salt, salt, salt, salt};
-  const uint8_t *domain_separator_x4[] = {&domain_separator, &domain_separator, &domain_separator, &domain_separator};
-  
-
   for(size_t i = 3; i < (SIGN_MIRA_128_PARAM_N_MPC - 1); i+=4) {
     size_t from = i;
     size_t to = i * 2 + 1;
