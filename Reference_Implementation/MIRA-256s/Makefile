@@ -2,16 +2,16 @@
 SCRIPT_VERSION=v1.0
 SCRIPT_AUTHOR=MIRA team
 
-CC=gcc
-C_FLAGS:=-O3 -flto -std=c99 -pedantic -Wall -Wextra -DSHAKE_TIMES4
-C_FLAGS_VERBOSE:=-O3 -flto -std=c99 -pedantic -Wall -Wextra -DSHAKE_TIMES4 -DVERBOSE
+CC=aarch64-linux-gnu-gcc
+C_FLAGS:=-O3 -flto -std=c99 -pedantic -Wall -Wextra -march=armv8-a -mtune=cortex-a53 $(OPENSSL_INCLUDE) ${OPENSSL_LIB} -lcrypto  -L/${PAPI_DIR}/lib 
+C_FLAGS_VERBOSE:= -O3 -pg -flto -std=c99 -pedantic -Wall -Wextra -Wpedantic -Werror -march=armv8-a -mtune=cortex-a53 -DVERBOSE $(OPENSSL_INCLUDE) ${OPENSSL_LIB} -lcrypto -L/${PAPI_DIR}/lib 
 
 RANDOMBYTES_SRC:=lib/randombytes/randombytes.c
 RANDOMBYTES_INCLUDE:=-I lib/randombytes -lcrypto
 
 XKCP_SRC:=lib/XKCP
 XKCP_SRC_SIMPLE:=$(XKCP_SRC)/SimpleFIPS202.c
-XKCP_INCLUDE:=-I$(XKCP_SRC) -I$(XKCP_SRC)/avx2
+XKCP_INCLUDE:=-I$(XKCP_SRC) -I$(XKCP_SRC)/ARMv8
 XKCP_INCLUDE_SIMPLE:=-I $(XKCP_SRC)
 XKCP_LINKER:=-L$(XKCP_SRC) -lshake
 
@@ -21,8 +21,10 @@ WRAPPER_INCLUDE:=-I $(WRAPPER_SRC)
 FFI_SRC:=src/finite_fields
 FFI_INCLUDE:=-I $(FFI_SRC)
 
+PAPI_INCLUDE:=-I/${PAPI_DIR}/include -lpapi
+
 SRC:=src
-INCLUDE:=-I src $(FFI_INCLUDE) $(WRAPPER_INCLUDE) $(XKCP_INCLUDE) $(RANDOMBYTES_INCLUDE)
+INCLUDE:=-I src $(FFI_INCLUDE) $(WRAPPER_INCLUDE) $(XKCP_INCLUDE) $(RANDOMBYTES_INCLUDE) $(PAPI_INCLUDE)
 
 MAIN_MIRA:=src/main_mira.c
 MAIN_KAT:=src/PQCgenKAT_sign.c
