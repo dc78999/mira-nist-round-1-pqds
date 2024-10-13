@@ -568,14 +568,11 @@ void sign_mira_192_recompute_commitments(uint8_t *commits, uint8_t *theta_i, uin
   sign_mira_192_tree_expand_partial(theta_tree, (const sign_mira_192_seed_tree_node_t *) partial_tree_seeds, salt, hidden);
   memcpy(theta_i, &theta_tree[SIGN_MIRA_192_PARAM_N_MPC - 1], SIGN_MIRA_192_PARAM_TREE_LEAF_BYTES);
 
-  const uint8_t *salt_x4[] = {salt, salt, salt, salt};
-  uint8_t *e_x4[] = {&e, &e, &e, &e};
-  uint8_t *domain_separator_x4[] = {&domain_separator, &domain_separator, &domain_separator, &domain_separator};
-  uint8_t index_0 = 0, index_1 = 1, index_2 = 2, index_3 = 3;
-  uint8_t *index_x4[] = {&index_0, &index_1, &index_2, &index_3};
-
   // Recompute the first N-1 commitments (last commitment and index hidden are overwrited after)
   for(size_t i = 0; i < SIGN_MIRA_192_PARAM_N_MPC; i+=1) {
+    const uint8_t *seed = &theta_i[SIGN_MIRA_192_SECURITY_BYTES * i];
+    uint8_t *commit = &commits[2 * SIGN_MIRA_192_SECURITY_BYTES * i];
+
     hash_sha3_ctx ctx;
     uint8_t index = (uint8_t)i;
     hash_sha3_init(&ctx);
@@ -583,8 +580,9 @@ void sign_mira_192_recompute_commitments(uint8_t *commits, uint8_t *theta_i, uin
     hash_sha3_absorb(&ctx, salt, 2 * SIGN_MIRA_192_SECURITY_BYTES);
     hash_sha3_absorb(&ctx, &e, sizeof(uint8_t));
     hash_sha3_absorb(&ctx, &index, sizeof(uint8_t));
-    hash_sha3_absorb(&ctx, &theta_i[SIGN_MIRA_192_SECURITY_BYTES * i], SIGN_MIRA_192_SECURITY_BYTES);
-    hash_sha3_finalize(&commits[2 * SIGN_MIRA_192_SECURITY_BYTES * i], &ctx);
+    hash_sha3_absorb(&ctx, seed, SIGN_MIRA_192_SECURITY_BYTES);
+
+    hash_sha3_finalize(commit, &ctx);
   }
 
   memcpy(&commits[2 * SIGN_MIRA_192_SECURITY_BYTES * hidden], &state[SIGN_MIRA_192_PARAM_TREE_PATH_BYTES], 2 * SIGN_MIRA_192_SECURITY_BYTES);
@@ -638,13 +636,13 @@ void sign_mira_192_recompute_shares(sign_mira_192_shares_t *shares, const uint8_
     uint8_t random3[2 * SIGN_MIRA_192_VEC_R_BYTES + SIGN_MIRA_192_PARAM_M_BYTES + SIGN_MIRA_192_VEC_K_BYTES] = {0};
     uint8_t *random_x4[] = {random0, random1, random2, random3};
 
-    seedexpander_shake_init(&seedexpander, seed_x4[0], SIGN_MIRA_192_SECURITY_BYTES, salt_x4, 2 * SIGN_MIRA_192_SECURITY_BYTES);
+    seedexpander_shake_init(&seedexpander, seed_x4[0], SIGN_MIRA_192_SECURITY_BYTES, salt, 2 * SIGN_MIRA_192_SECURITY_BYTES);
     seedexpander_shake_get_bytes(&seedexpander, random_x4[0], 2 * SIGN_MIRA_192_VEC_R_BYTES + SIGN_MIRA_192_PARAM_M_BYTES + SIGN_MIRA_192_VEC_K_BYTES);
-    seedexpander_shake_init(&seedexpander, seed_x4[1], SIGN_MIRA_192_SECURITY_BYTES, salt_x4, 2 * SIGN_MIRA_192_SECURITY_BYTES);
+    seedexpander_shake_init(&seedexpander, seed_x4[1], SIGN_MIRA_192_SECURITY_BYTES, salt, 2 * SIGN_MIRA_192_SECURITY_BYTES);
     seedexpander_shake_get_bytes(&seedexpander, random_x4[1], 2 * SIGN_MIRA_192_VEC_R_BYTES + SIGN_MIRA_192_PARAM_M_BYTES + SIGN_MIRA_192_VEC_K_BYTES);
-    seedexpander_shake_init(&seedexpander, seed_x4[2], SIGN_MIRA_192_SECURITY_BYTES, salt_x4, 2 * SIGN_MIRA_192_SECURITY_BYTES);
+    seedexpander_shake_init(&seedexpander, seed_x4[2], SIGN_MIRA_192_SECURITY_BYTES, salt, 2 * SIGN_MIRA_192_SECURITY_BYTES);
     seedexpander_shake_get_bytes(&seedexpander, random_x4[2], 2 * SIGN_MIRA_192_VEC_R_BYTES + SIGN_MIRA_192_PARAM_M_BYTES + SIGN_MIRA_192_VEC_K_BYTES);
-    seedexpander_shake_init(&seedexpander, seed_x4[3], SIGN_MIRA_192_SECURITY_BYTES, salt_x4, 2 * SIGN_MIRA_192_SECURITY_BYTES);
+    seedexpander_shake_init(&seedexpander, seed_x4[3], SIGN_MIRA_192_SECURITY_BYTES, salt, 2 * SIGN_MIRA_192_SECURITY_BYTES);
     seedexpander_shake_get_bytes(&seedexpander, random_x4[3], 2 * SIGN_MIRA_192_VEC_R_BYTES + SIGN_MIRA_192_PARAM_M_BYTES + SIGN_MIRA_192_VEC_K_BYTES);
     
     for(size_t j = 0; j < 4; j++) {
