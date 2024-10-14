@@ -1,48 +1,34 @@
-+=============================================================================+
-|                                                                             |
-|               ***********************************************               |
-|               *     POST-QUANTUM CRYPTO STANDARDIZATION     *               |
-|               ***********************************************               |
-|                                                                             |
-|=============================================================================|
-|                                                                             |
-|        Proposal: MIRA                                                       |
-|                                                                             |
-|        Submitters (by alphabetical order):                                  |
-|                  - Nicolas ARAGON                                           |
-|                  - Magali BARDET                                            |
-|                  - Loïc BIDOUX                                              |
-|                  - Jesús-Javier CHI-DOMÍNGUEZ                               |
-|                  - Victor DYSERYN                                           |
-|                  - Thibauld FENEUIL                                         |
-|                  - Philippe GABORIT                                         |
-|                  - Romaric Neveu                                            |
-|                  - Matthieu RIVAIN                                          |
-|                  - Jean-Pierre TILLICH                                      |
-|                                                                             |
-|        Inventors: Same as submitters                                        |
-|                                                                             |
-|        Developers: Same as submitters                                       |
-|                                                                             |
-|        Owners: Same as submitters                                           |
-|                                                                             |
-+=============================================================================+
+This is a modified version of the orignal MIRA submission in response to NIST's call for proposal for standar-
+dization of quantum-resistant digital signature schemes. The original README.md is archived as README.md.old in the same root directory. This renewed README.md is written to help interested developers can run and test this version on their own environment.
 
-This archive is a proposal in response to NIST's call for proposal for standar-
-dization of quantum-resistant digital signature schemes.
+## Introduction
 
-MIRA provides POST-QUANTUM SIGNATURES and targets NIST's
-security levels 1, 3, and 5.
+This version is a migration of MIRA to make it runnable on ARM-A53 processor. It also laid a ground work for future optimization.
 
-===============================================================================
 
-This archive is organized as follows:
+## Getting started
 
-- KATs: Known Answer Test values and verbose outputs for each parameter set
-- Reference_Implementation: Reference implementation for each parameter set
-- Optimized_Implementation: Optimized implementation for each parameter set
-- Supporting_Documentation: Supporting documentation
+### Prepare the environment
 
-===============================================================================
+#### Hardware
 
-The authors did their best to make this archive complete and proper.
+This version of MIRA is tested on Raspberry PI 2W with ARM-A53 processor
+
+#### Software dependencies
+
+##### aarch64-gnu-gcc
+
+##### openssl
+
+##### keccak/XKCP library
+
+##### PAPI
+
+
+### Initial idea
+
+### Benchmarking
+
+### Future work
+
+
