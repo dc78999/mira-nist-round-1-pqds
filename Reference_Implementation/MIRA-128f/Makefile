@@ -3,8 +3,8 @@ SCRIPT_VERSION=v1.0
 SCRIPT_AUTHOR=MIRA team
 
 CC=gcc
-C_FLAGS:=-O3 -flto -std=c99 -pedantic -Wall -Wextra -DSHAKE_TIMES4
-C_FLAGS_VERBOSE:=-O3 -flto -std=c99 -pedantic -Wall -Wextra -DSHAKE_TIMES4 -DVERBOSE
+C_FLAGS:=-O3 -flto -std=c99 -pedantic -Wall -Wextra -DSHAKE_TIMES4 -L/${PAPI_DIR}/lib
+C_FLAGS_VERBOSE:=-O3 -flto -std=c99 -pedantic -Wall -Wextra -DSHAKE_TIMES4 -DVERBOSE -L/${PAPI_DIR}/lib
 
 RANDOMBYTES_SRC:=lib/randombytes/randombytes.c
 RANDOMBYTES_INCLUDE:=-I lib/randombytes -lcrypto
@@ -21,8 +21,10 @@ WRAPPER_INCLUDE:=-I $(WRAPPER_SRC)
 FFI_SRC:=src/finite_fields
 FFI_INCLUDE:=-I $(FFI_SRC)
 
+PAPI_INCLUDE:=-I/${PAPI_DIR}/include -lpapi
+
 SRC:=src
-INCLUDE:=-I src $(FFI_INCLUDE) $(WRAPPER_INCLUDE) $(XKCP_INCLUDE) $(RANDOMBYTES_INCLUDE)
+INCLUDE:=-I src $(FFI_INCLUDE) $(WRAPPER_INCLUDE) $(XKCP_INCLUDE) $(RANDOMBYTES_INCLUDE) $(PAPI_INCLUDE)
 
 MAIN_MIRA:=src/main_mira.c
 MAIN_KAT:=src/PQCgenKAT_sign.c
