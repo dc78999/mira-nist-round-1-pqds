@@ -12,6 +12,9 @@ You are solely responsible for determining the appropriateness of using and dist
 #include <ctype.h>
 #include "randombytes.h"
 #include "api.h"
+#include <papi.h>  // Include PAPI
+
+#define ROUNDS              100
 
 #define	MAX_MARKER_LEN		50
 
@@ -41,6 +44,38 @@ main(void)
     unsigned char       pk[CRYPTO_PUBLICKEYBYTES], sk[CRYPTO_SECRETKEYBYTES];
     int                 ret_val;
 
+
+    // PAPI variables
+    long long values[5]; // total cycles, total instructions, L1, L2, total time
+    int event_set = PAPI_NULL;
+
+    // Variables for storing cumulative performance metrics
+    long long total_cycles = 0, total_instructions = 0;
+    long long total_L1_dcm = 0, total_L2_dcm = 0;
+    long long total_execution_time = 0;
+
+    // init pAPI
+    if (PAPI_library_init(PAPI_VER_CURRENT) != PAPI_VER_CURRENT) {
+        printf("PAPI library init error!\n");
+        return KAT_CRYPTO_FAILURE;
+    }
+
+    // Create event set and add the events we want to measure
+    if (PAPI_create_eventset(&event_set) != PAPI_OK) {
+        printf("PAPI create event set error!\n");
+        return KAT_CRYPTO_FAILURE;
+    }
+
+    // Add the events for total cycles, instructions, L1 and L2 cache misses
+    if (PAPI_add_event(event_set, PAPI_TOT_CYC) != PAPI_OK ||
+        PAPI_add_event(event_set, PAPI_TOT_INS) != PAPI_OK ||
+        PAPI_add_event(event_set, PAPI_L1_DCM) != PAPI_OK ||
+        PAPI_add_event(event_set, PAPI_L2_DCM) != PAPI_OK) {
+        printf("PAPI add event error!\n");
+        return KAT_CRYPTO_FAILURE;
+    }
+
+
     // Create the REQUEST file
     sprintf(fn_req, "PQCsignKAT_%d.req", CRYPTO_SECRETKEYBYTES);
     if ( (fp_req = fopen(fn_req, "w")) == NULL ) {
@@ -57,7 +92,8 @@ main(void)
         entropy_input[i] = i;
 
     randombytes_init(entropy_input, NULL, 256);
-    for (int i=0; i<100; i++) {
+
+    for (int i=0; i<ROUNDS; i++) {
         fprintf(fp_req, "count = %d\n", i);
         randombytes(seed, 48);
         fprintBstr(fp_req, "seed = ", seed, 48);
@@ -78,83 +114,145 @@ main(void)
         return KAT_FILE_OPEN_ERROR;
     }
 
-    fprintf(fp_rsp, "# %s\n\n", CRYPTO_ALGNAME);
-    done = 0;
-    do {
-        if ( FindMarker(fp_req, "count = ") )
-            fscanf(fp_req, "%d", &count);
-        else {
-            done = 1;
-            break;
-        }
-        fprintf(fp_rsp, "count = %d\n", count);
+    // Start measuring total execution time
+    // if (PAPI_start(event_set) != PAPI_OK) {
+    //     printf("PAPI start error!\n");
+    //     return KAT_CRYPTO_FAILURE;
+    // }
+    
+        fprintf(fp_rsp, "# %s\n\n", CRYPTO_ALGNAME);
+        done = 0;
+        
+        do {            
+            if ( FindMarker(fp_req, "count = ") )
+                fscanf(fp_req, "%d", &count);
+            else {
+                done = 1;
+                break;
+            }
+            fprintf(fp_rsp, "count = %d\n", count);
 
-        if ( !ReadHex(fp_req, seed, 48, "seed = ") ) {
-            printf("ERROR: unable to read 'seed' from <%s>\n", fn_req);
-            return KAT_DATA_ERROR;
-        }
-        fprintBstr(fp_rsp, "seed = ", seed, 48);
+            // Reset the PAPI event set to start fresh for each run
+            if (PAPI_reset(event_set) != PAPI_OK) {
+                printf("PAPI reset error!\n");
+                return KAT_CRYPTO_FAILURE;
+            }
+            // Start measuring total execution time
+            if (PAPI_start(event_set) != PAPI_OK) {
+                printf("PAPI start error!\n");
+                return KAT_CRYPTO_FAILURE;
+            }
 
-        randombytes_init(seed, NULL, 256);
+            if ( !ReadHex(fp_req, seed, 48, "seed = ") ) {
+                printf("ERROR: unable to read 'seed' from <%s>\n", fn_req);
+                return KAT_DATA_ERROR;
+            }
+            fprintBstr(fp_rsp, "seed = ", seed, 48);
 
-        if ( FindMarker(fp_req, "mlen = ") )
-            fscanf(fp_req, "%llu", &mlen);
-        else {
-            printf("ERROR: unable to read 'mlen' from <%s>\n", fn_req);
-            return KAT_DATA_ERROR;
-        }
-        fprintf(fp_rsp, "mlen = %llu\n", mlen);
+            randombytes_init(seed, NULL, 256);
 
-        m = (unsigned char *)calloc(mlen, sizeof(unsigned char));
-        m1 = (unsigned char *)calloc(mlen+CRYPTO_BYTES, sizeof(unsigned char));
-        sm = (unsigned char *)calloc(mlen+CRYPTO_BYTES, sizeof(unsigned char));
+            if ( FindMarker(fp_req, "mlen = ") )
+                fscanf(fp_req, "%llu", &mlen);
+            else {
+                printf("ERROR: unable to read 'mlen' from <%s>\n", fn_req);
+                return KAT_DATA_ERROR;
+            }
+            fprintf(fp_rsp, "mlen = %llu\n", mlen);
 
-        if ( !ReadHex(fp_req, m, (int)mlen, "msg = ") ) {
-            printf("ERROR: unable to read 'msg' from <%s>\n", fn_req);
-            return KAT_DATA_ERROR;
-        }
-        fprintBstr(fp_rsp, "msg = ", m, mlen);
+            m = (unsigned char *)calloc(mlen, sizeof(unsigned char));
+            m1 = (unsigned char *)calloc(mlen+CRYPTO_BYTES, sizeof(unsigned char));
+            sm = (unsigned char *)calloc(mlen+CRYPTO_BYTES, sizeof(unsigned char));
 
-        // Generate the public/private keypair
-        if ( (ret_val = crypto_sign_keypair(pk, sk)) != 0) {
-            printf("crypto_sign_keypair returned <%d>\n", ret_val);
-            return KAT_CRYPTO_FAILURE;
-        }
-        fprintBstr(fp_rsp, "pk = ", pk, CRYPTO_PUBLICKEYBYTES);
-        fprintBstr(fp_rsp, "sk = ", sk, CRYPTO_SECRETKEYBYTES);
+            if ( !ReadHex(fp_req, m, (int)mlen, "msg = ") ) {
+                printf("ERROR: unable to read 'msg' from <%s>\n", fn_req);
+                return KAT_DATA_ERROR;
+            }
+            fprintBstr(fp_rsp, "msg = ", m, mlen);
 
-        if ( (ret_val = crypto_sign(sm, &smlen, m, mlen, sk)) != 0) {
-            printf("crypto_sign returned <%d>\n", ret_val);
-            return KAT_CRYPTO_FAILURE;
-        }
-        fprintf(fp_rsp, "smlen = %llu\n", smlen);
-        fprintBstr(fp_rsp, "sm = ", sm, smlen);
-        fprintf(fp_rsp, "\n");
+            // Generate the public/private keypair
+            if ( (ret_val = crypto_sign_keypair(pk, sk)) != 0) {
+                printf("crypto_sign_keypair returned <%d>\n", ret_val);
+                return KAT_CRYPTO_FAILURE;
+            }
+            fprintBstr(fp_rsp, "pk = ", pk, CRYPTO_PUBLICKEYBYTES);
+            fprintBstr(fp_rsp, "sk = ", sk, CRYPTO_SECRETKEYBYTES);
 
-        if ( (ret_val = crypto_sign_open(m1, &mlen1, sm, smlen, pk)) != 0) {
-            printf("crypto_sign_open returned <%d>\n", ret_val);
-            return KAT_CRYPTO_FAILURE;
-        }
+            if ( (ret_val = crypto_sign(sm, &smlen, m, mlen, sk)) != 0) {
+                printf("crypto_sign returned <%d>\n", ret_val);
+                return KAT_CRYPTO_FAILURE;
+            }
+            fprintf(fp_rsp, "smlen = %llu\n", smlen);
+            fprintBstr(fp_rsp, "sm = ", sm, smlen);
+            fprintf(fp_rsp, "\n");
 
-        if ( mlen != mlen1 ) {
-            printf("crypto_sign_open returned bad 'mlen': Got <%llu>, expected <%llu>\n", mlen1, mlen);
-            return KAT_CRYPTO_FAILURE;
-        }
+            if ( (ret_val = crypto_sign_open(m1, &mlen1, sm, smlen, pk)) != 0) {
+                printf("crypto_sign_open returned <%d>\n", ret_val);
+                return KAT_CRYPTO_FAILURE;
+            }
 
-        if ( memcmp(m, m1, mlen) ) {
-            printf("crypto_sign_open returned bad 'm' value\n");
-            return KAT_CRYPTO_FAILURE;
-        }
+            if ( mlen != mlen1 ) {
+                printf("crypto_sign_open returned bad 'mlen': Got <%llu>, expected <%llu>\n", mlen1, mlen);
+                return KAT_CRYPTO_FAILURE;
+            }
 
-        free(m);
-        free(m1);
-        free(sm);
+            if ( memcmp(m, m1, mlen) ) {
+                printf("crypto_sign_open returned bad 'm' value\n");
+                return KAT_CRYPTO_FAILURE;
+            }
 
-    } while ( !done );
+            free(m);
+            free(m1);
+            free(sm);
+            // Stop PAPI and get performance metrics
+            if (PAPI_stop(event_set, values) != PAPI_OK) {
+                printf("PAPI stop error!\n");
+                return KAT_CRYPTO_FAILURE;
+            }
+            printf("Run %d completed.\n", count + 1);
+            printf("  Total Cycles: %lld\n", values[0]);
+            printf("  Total Instructions: %lld\n", values[1]);
+            printf("  L1 Data Cache Misses: %lld\n", values[2]);
+            printf("  L2 Data Cache Misses: %lld\n", values[3]);        
+            printf("  Public Key Size: %d bytes\n", CRYPTO_PUBLICKEYBYTES);
+            printf("  Secret Key Size: %d bytes\n", CRYPTO_SECRETKEYBYTES);
+            printf("  Signature Size: %llu bytes\n", smlen);          
+            
+            // Accumulate the values for averaging
+            total_cycles += values[0];
+            total_instructions += values[1];
+            total_L1_dcm += values[2];
+            total_L2_dcm += values[3];  
+        } while ( !done );
 
+              
+
+        
+    printf("  Total Cycles: %lld\n", total_cycles);
+    printf("  Total Instructions: %lld\n", total_instructions);
+    printf("  L1 Data Cache Misses: %lld\n", total_L1_dcm);
+    printf("  L2 Data Cache Misses: %lld\n", total_L2_dcm);        
+    printf("  Public Key Size: %d bytes\n", CRYPTO_PUBLICKEYBYTES);
+    printf("  Secret Key Size: %d bytes\n", CRYPTO_SECRETKEYBYTES);
+    printf("  Signature Size: %llu bytes\n", smlen); 
+    
     fclose(fp_req);
     fclose(fp_rsp);
+// Calculate the average for each metric
 
+       
+
+    printf("Average Performance Metrics after %d runs:\n", ROUNDS);
+    printf("  Average Total Cycles: %lld\n", total_cycles / ROUNDS);
+    printf("  Average Total Instructions: %lld\n", total_instructions / ROUNDS);
+    printf("  Average L1 Data Cache Misses: %lld\n", total_L1_dcm / ROUNDS);
+    printf("  Average L2 Data Cache Misses: %lld\n", total_L2_dcm / ROUNDS);
+    printf("  Average Total Execution Time (cycles): %lld\n", total_execution_time / ROUNDS);
+    printf("  Public Key Size: %d bytes\n", CRYPTO_PUBLICKEYBYTES);
+    printf("  Secret Key Size: %d bytes\n", CRYPTO_SECRETKEYBYTES);
+    printf("  Signature Size: %llu bytes\n", smlen);
+
+    
+    PAPI_shutdown();
     return KAT_SUCCESS;
 }
 
